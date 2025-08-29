@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
+import Logo from '@/components/ui/logo';
 
 const Footer = () => {
   return (
@@ -9,11 +10,8 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <Link to="/" className="flex items-center space-x-2 mb-4">
-              <Leaf className="h-8 w-8 text-primary" />
-              <span className="font-bold text-xl bg-gradient-eco bg-clip-text text-transparent">
-                Trash2Trade
-              </span>
+            <Link to="/" className="flex items-center mb-4">
+              <Logo />
             </Link>
             <p className="text-muted-foreground mb-4 max-w-md">
               Join the tech-powered recycling revolution. Connect citizens, collectors, 
