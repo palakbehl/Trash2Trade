@@ -64,12 +64,13 @@ export default {
 			},
 			backgroundImage: {
 				'gradient-eco': 'var(--gradient-eco)',
-				'gradient-ocean': 'var(--gradient-ocean)',
-				'gradient-earth': 'var(--gradient-earth)'
+				'gradient-hero': 'var(--gradient-hero)',
+				'gradient-section': 'var(--gradient-section)'
 			},
 			boxShadow: {
 				'eco': 'var(--shadow-eco)',
-				'glow': 'var(--shadow-glow)'
+				'card': 'var(--shadow-card)',
+				'header': 'var(--shadow-header)'
 			},
 			transitionTimingFunction: {
 				'smooth': 'var(--transition-smooth)'

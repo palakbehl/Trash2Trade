@@ -68,20 +68,48 @@ const Navbar = () => {
 
   if (!user) {
     return (
-      <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border sticky top-0 z-50">
+      <nav className="bg-background shadow-header sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center">
               <Logo />
             </Link>
             
+            {/* Navigation Items */}
+            <div className="hidden md:flex items-center space-x-8">
+              <Link to="/" className="text-foreground hover:text-primary transition-colors font-medium">
+                Home
+              </Link>
+              <Link to="/about" className="text-foreground hover:text-primary transition-colors font-medium">
+                About Us
+              </Link>
+              <Link to="/services" className="text-foreground hover:text-primary transition-colors font-medium">
+                Services
+              </Link>
+              <Link to="/recycling" className="text-foreground hover:text-primary transition-colors font-medium">
+                Recycling Plastics
+              </Link>
+              <Link to="/partners" className="text-foreground hover:text-primary transition-colors font-medium">
+                Partners
+              </Link>
+              <Link to="/initiatives" className="text-foreground hover:text-primary transition-colors font-medium">
+                Our Initiatives
+              </Link>
+              <Link to="/contact" className="text-foreground hover:text-primary transition-colors font-medium">
+                Contact Us
+              </Link>
+            </div>
+
+            {/* Auth Buttons */}
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" asChild>
-                <Link to="/login">Login</Link>
-              </Button>
-              <Button asChild>
-                <Link to="/signup">Sign Up</Link>
-              </Button>
+              <Link to="/login">
+                <Button variant="ghost">Sign In</Button>
+              </Link>
+              <Link to="/signup">
+                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  Request A Pickup
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
