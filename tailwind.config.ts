@@ -64,12 +64,14 @@ export default {
 			},
 			backgroundImage: {
 				'gradient-eco': 'var(--gradient-eco)',
-				'gradient-ocean': 'var(--gradient-ocean)',
-				'gradient-earth': 'var(--gradient-earth)'
+				'gradient-nature': 'var(--gradient-nature)',
+				'gradient-sunshine': 'var(--gradient-sunshine)',
+				'gradient-forest': 'var(--gradient-forest)'
 			},
 			boxShadow: {
 				'eco': 'var(--shadow-eco)',
-				'glow': 'var(--shadow-glow)'
+				'glow': 'var(--shadow-glow)',
+				'yellow': 'var(--shadow-yellow)'
 			},
 			transitionTimingFunction: {
 				'smooth': 'var(--transition-smooth)'

@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -41,25 +41,36 @@ const Navbar = () => {
     if (!user) return [];
     
     switch (user.role) {
-      case 'citizen':
-        return [
-          { path: '/citizen', label: 'Dashboard', icon: Home },
-          { path: '/citizen/book-pickup', label: 'Book Pickup', icon: Calendar },
-          { path: '/citizen/rewards', label: 'Rewards', icon: Gift },
-          { path: '/citizen/eco-score', label: 'Eco Score', icon: Trophy },
-        ];
+      case 'user':
+        if (user.subType === 'trash-generator') {
+          return [
+            { path: '/dashboard', label: 'Dashboard', icon: Home },
+            { path: '/trash-generator', label: 'Book Pickup', icon: Calendar },
+            { path: '/profile', label: 'Profile', icon: User },
+            { path: '/eco-store', label: 'Eco Store', icon: Gift },
+          ];
+        } else if (user.subType === 'ngo-business') {
+          return [
+            { path: '/dashboard', label: 'Dashboard', icon: Home },
+            { path: '/ngo-business', label: 'Partnerships', icon: Heart },
+            { path: '/profile', label: 'Profile', icon: User },
+            { path: '/eco-store', label: 'Eco Store', icon: Gift },
+          ];
+        } else if (user.subType === 'diy-marketplace') {
+          return [
+            { path: '/dashboard', label: 'Dashboard', icon: Home },
+            { path: '/diy-marketplace', label: 'My Products', icon: BarChart3 },
+            { path: '/profile', label: 'Profile', icon: User },
+            { path: '/eco-store', label: 'Eco Store', icon: Gift },
+          ];
+        }
+        return [];
       case 'collector':
         return [
           { path: '/collector', label: 'Dashboard', icon: Home },
           { path: '/collector/requests', label: 'Pickup Requests', icon: Truck },
           { path: '/collector/active', label: 'Active Route', icon: MapPin },
           { path: '/collector/earnings', label: 'Earnings', icon: DollarSign },
-        ];
-      case 'ngo':
-        return [
-          { path: '/ngo', label: 'Dashboard', icon: Home },
-          { path: '/ngo/sponsor', label: 'Sponsor Drive', icon: Heart },
-          { path: '/ngo/impact', label: 'Impact Tracker', icon: BarChart3 },
         ];
       default:
         return [];
@@ -76,6 +87,12 @@ const Navbar = () => {
             </Link>
             
             <div className="flex items-center space-x-4">
+              <Button variant="ghost" asChild>
+                <Link to="/about">About Us</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link to="/admin">Admin Panel</Link>
+              </Button>
               <Button variant="ghost" asChild>
                 <Link to="/login">Login</Link>
               </Button>
@@ -123,24 +140,13 @@ const Navbar = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            {/* Green Coins Display */}
-            <div className="hidden sm:flex items-center space-x-1 bg-success/10 px-3 py-1 rounded-full">
-              <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-success">
-                {user.greenCoins || 0} GC
-              </span>
-            </div>
-            
-            {/* Notifications */}
-            <Button variant="ghost" size="sm">
-              <Bell className="h-4 w-4" />
-            </Button>
             
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}&backgroundColor=10b981&textColor=ffffff`} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>

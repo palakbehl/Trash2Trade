@@ -38,6 +38,8 @@ const CitizenDashboard = () => {
       change: '+25 this week',
       icon: Gift,
       color: 'text-success',
+      bgColor: 'bg-success/10',
+      trend: '+25',
     },
     {
       title: 'Eco Score',
@@ -45,6 +47,8 @@ const CitizenDashboard = () => {
       change: '+12 this month',
       icon: Trophy,
       color: 'text-warning',
+      bgColor: 'bg-warning/10',
+      trend: '+12',
     },
     {
       title: 'Completed Pickups',
@@ -52,13 +56,17 @@ const CitizenDashboard = () => {
       change: 'This month: 3',
       icon: CheckCircle,
       color: 'text-primary',
+      bgColor: 'bg-primary/10',
+      trend: '+3',
     },
     {
       title: 'Impact Level',
       value: 'Eco Warrior',
       change: 'Next: Green Champion',
       icon: Star,
-      color: 'text-purple-600',
+      color: 'text-secondary',
+      bgColor: 'bg-secondary/10',
+      trend: 'Level 4',
     },
   ];
 
@@ -103,16 +111,22 @@ const CitizenDashboard = () => {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index}>
+            <Card key={index} className="hover:shadow-glow transition-all duration-300 hover:scale-105">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <Icon className={`h-8 w-8 ${stat.color}`} />
-                  <TrendingUp className="h-4 w-4 text-success" />
+                  <div className={`p-3 rounded-full ${stat.bgColor}`}>
+                    <Icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-medium text-success bg-success/10 px-2 py-1 rounded-full">
+                      {stat.trend}
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs text-success">{stat.change}</p>
+                  <p className="text-3xl font-bold bg-gradient-eco bg-clip-text text-transparent">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.change}</p>
                 </div>
               </CardContent>
             </Card>

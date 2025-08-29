@@ -16,6 +16,23 @@ import CollectorDashboard from "./pages/CollectorDashboard";
 import NGODashboard from "./pages/NGODashboard";
 import BookPickup from "./pages/BookPickup";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
+import Rewards from "./pages/Rewards";
+import EcoScore from "./pages/EcoScore";
+import CollectorRequests from "./pages/CollectorRequests";
+import CollectorRoute from "./pages/CollectorRoute";
+import CollectorEarnings from "./pages/CollectorEarnings";
+import NGOSponsor from "./pages/NGOSponsor";
+import NGOImpact from "./pages/NGOImpact";
+import TrashGenerator from "./pages/TrashGenerator";
+import NGOBusiness from "./pages/NGOBusiness";
+import DIYMarketplace from "./pages/DIYMarketplace";
+import CollectorVerification from "./pages/CollectorVerification";
+import EcoStore from "./pages/EcoStore";
+import AdminPanel from "./pages/AdminPanel";
+import UserProfile from "./pages/UserProfile";
+import RoleSpecificDashboard from "./pages/RoleSpecificDashboard";
+import AboutUs from "./pages/AboutUs";
 
 const queryClient = new QueryClient();
 
@@ -31,25 +48,47 @@ const AppContent = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           
-          {/* Citizen Routes */}
+          {/* User Routes - Trash Generator */}
+          <Route path="/trash-generator" element={<TrashGenerator />} />
+          
+          {/* User Routes - NGO/Business */}
+          <Route path="/ngo-business" element={<NGOBusiness />} />
+          
+          {/* User Routes - DIY Marketplace */}
+          <Route path="/diy-marketplace" element={<DIYMarketplace />} />
+          
+          {/* Role-Specific Dashboards */}
+          <Route path="/dashboard" element={<RoleSpecificDashboard />} />
+          
+          {/* Eco Store */}
+          <Route path="/eco-store" element={<EcoStore />} />
+          
+          {/* Admin Panel */}
+          <Route path="/admin" element={<AdminPanel />} />
+          
+          {/* About Us */}
+          <Route path="/about" element={<AboutUs />} />
+          
+          {/* Legacy Citizen Routes (for backward compatibility) */}
           <Route path="/citizen" element={<CitizenDashboard />} />
           <Route path="/citizen/book-pickup" element={<BookPickup />} />
-          <Route path="/citizen/rewards" element={<div>Rewards Page (Coming Soon)</div>} />
-          <Route path="/citizen/eco-score" element={<div>Eco Score Page (Coming Soon)</div>} />
+          <Route path="/citizen/rewards" element={<Rewards />} />
+          <Route path="/citizen/eco-score" element={<EcoScore />} />
           
           {/* Collector Routes */}
           <Route path="/collector" element={<CollectorDashboard />} />
-          <Route path="/collector/requests" element={<div>Pickup Requests (Coming Soon)</div>} />
-          <Route path="/collector/active" element={<div>Active Route (Coming Soon)</div>} />
-          <Route path="/collector/earnings" element={<div>Earnings (Coming Soon)</div>} />
+          <Route path="/collector/verification" element={<CollectorVerification />} />
+          <Route path="/collector/requests" element={<CollectorRequests />} />
+          <Route path="/collector/active" element={<CollectorRoute />} />
+          <Route path="/collector/earnings" element={<CollectorEarnings />} />
           
-          {/* NGO Routes */}
+          {/* Legacy NGO Routes (for backward compatibility) */}
           <Route path="/ngo" element={<NGODashboard />} />
-          <Route path="/ngo/sponsor" element={<div>Sponsor Drive (Coming Soon)</div>} />
-          <Route path="/ngo/impact" element={<div>Impact Tracker (Coming Soon)</div>} />
+          <Route path="/ngo/sponsor" element={<NGOSponsor />} />
+          <Route path="/ngo/impact" element={<NGOImpact />} />
           
           {/* Profile */}
-          <Route path="/profile" element={<div>Profile (Coming Soon)</div>} />
+          <Route path="/profile" element={<UserProfile />} />
           
           {/* Catch all */}
           <Route path="*" element={<NotFound />} />
