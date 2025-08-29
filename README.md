@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# Trash2Trade- A tech-powered recycling ecosystem
 
 ## Project info
 
