@@ -1,0 +1,70 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface ITransaction extends Document {
+  userId: string;
+  collectorId?: string;
+  requestId?: string;
+  type: 'earning' | 'spending' | 'withdrawal' | 'platform_fee' | 'pickup' | 'purchase' | 'reward' | 'penalty';
+  amount: number;
+  greenCoins?: number;
+  description: string;
+  status: 'pending' | 'completed' | 'failed';
+  relatedId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const TransactionSchema: Schema = new Schema({
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  collectorId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  requestId: {
+    type: Schema.Types.ObjectId,
+    ref: 'WasteRequest'
+  },
+  type: {
+    type: String,
+    enum: ['earning', 'spending', 'withdrawal', 'platform_fee', 'pickup', 'purchase', 'reward', 'penalty'],
+    required: true
+  },
+  amount: {
+    type: Number,
+    required: true
+  },
+  greenCoins: {
+    type: Number,
+    default: 0
+  },
+  description: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'completed'
+  },
+  relatedId: {
+    type: String,
+    trim: true
+  }
+}, {
+  timestamps: true
+});
+
+// Create indexes
+TransactionSchema.index({ userId: 1 });
+TransactionSchema.index({ collectorId: 1 });
+TransactionSchema.index({ type: 1 });
+TransactionSchema.index({ status: 1 });
+TransactionSchema.index({ createdAt: -1 });
+
+export default mongoose.model<ITransaction>('Transaction', TransactionSchema);
+

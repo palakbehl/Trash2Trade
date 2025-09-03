@@ -1,29 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
+  Recycle, 
+  Leaf, 
   TrendingUp, 
   Package, 
-  Users, 
-  Award, 
-  Recycle, 
-  ShoppingCart,
-  Truck,
-  MapPin,
-  Calendar,
-  DollarSign,
-  BarChart3,
-  PieChart,
+  ShoppingCart, 
   Activity,
+  PieChart,
+  DollarSign,
+  Users,
   Target,
-  Leaf,
-  Star
+  Award,
+  Calendar,
+  MapPin,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Star,
+  Truck
 } from 'lucide-react';
+import { dataStore } from '@/lib/dynamicDataStore';
+import UserChart from '@/components/charts/UserChart';
 
 interface DashboardData {
-  stats: Record<string, number | string>;
+  stats: Array<{
+    title: string;
+    value: string | number;
+    change: string;
+    icon: any;
+    color: string;
+  }>;
   recentActivity: Array<{
     id: string;
     type: string;
@@ -32,7 +43,6 @@ interface DashboardData {
     status: string;
   }>;
   charts: {
-    monthly: number[];
     categories: Record<string, number>;
   };
 }
@@ -42,126 +52,112 @@ const RoleSpecificDashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
-    // Mock data based on user subtype
-    const getMockData = (): DashboardData => {
-      switch (user?.subType) {
+    // Get dynamic data based on user subtype
+    const getDynamicData = (): DashboardData => {
+      if (!user?.id) {
+        return {
+          stats: {},
+          recentActivity: [],
+          charts: { monthly: [], categories: {} }
+        };
+      }
+
+      const userStats = dataStore.getUserStats(user.id);
+      const userTransactions = dataStore.getTransactionsByUser(user.id);
+      const userPickups = dataStore.getPickupRequestsByUser(user.id);
+
+      switch (user?.subtype) {
         case 'trash-generator':
           return {
-            stats: {
-              totalPickups: 23,
-              wasteCollected: 245,
-              greenCoins: 1250,
-              ecoScore: 87,
-              co2Saved: 45.6,
-              nextPickup: 'Aug 30, 2024'
+            stats: userStats || {
+              totalPickups: 0,
+              wasteCollected: 0,
+              greenCoins: user.greenCoins,
+              ecoScore: user.ecoScore || 0,
+              co2Saved: 0,
+              nextPickup: null
             },
-            recentActivity: [
-              {
-                id: '1',
-                type: 'pickup',
-                description: 'Plastic bottles pickup completed',
-                timestamp: '2024-08-25 10:30 AM',
-                status: 'completed'
-              },
-              {
-                id: '2',
-                type: 'reward',
-                description: 'Earned 75 Green Coins',
-                timestamp: '2024-08-25 10:35 AM',
-                status: 'success'
-              },
-              {
-                id: '3',
-                type: 'pickup',
-                description: 'Cardboard pickup scheduled',
-                timestamp: '2024-08-30 2:00 PM',
-                status: 'scheduled'
-              }
-            ],
+            recentActivity: userTransactions.slice(0, 5).map(tx => ({
+              id: tx.id,
+              type: tx.type,
+              description: tx.description,
+              timestamp: tx.createdAt.toLocaleString(),
+              status: 'completed'
+            })),
             charts: {
-              monthly: [12, 18, 23, 15, 28, 22],
-              categories: { plastic: 45, cardboard: 30, metal: 15, glass: 10 }
+              monthly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              categories: userPickups.reduce((acc: Record<string, number>, pickup) => {
+                acc[pickup.wasteType] = (acc[pickup.wasteType] || 0) + pickup.quantity;
+                return acc;
+              }, {})
             }
           };
-
         case 'ngo-business':
           return {
             stats: {
               activeProjects: 8,
-              totalParticipants: 2450,
-              wasteReduced: 2340,
-              partnerships: 15,
-              impactScore: 94,
-              nextEvent: 'Sep 5, 2024'
+              totalParticipants: 150,
+              wasteReduced: 450,
+              partnerships: 6,
+              impactScore: 98,
+              nextEvent: 'Jan 15, 2024'
             },
-            recentActivity: [
-              {
-                id: '1',
-                type: 'project',
-                description: 'Zero Waste Campaign launched',
-                timestamp: '2024-08-20 9:00 AM',
-                status: 'active'
-              },
-              {
-                id: '2',
-                type: 'partnership',
-                description: 'New corporate partner onboarded',
-                timestamp: '2024-08-18 3:30 PM',
-                status: 'completed'
-              },
-              {
-                id: '3',
-                type: 'event',
-                description: 'Community awareness event scheduled',
-                timestamp: '2024-09-05 10:00 AM',
-                status: 'scheduled'
-              }
-            ],
+            recentActivity: userTransactions.slice(0, 5).map(tx => ({
+              id: tx.id,
+              type: tx.type as string,
+              description: tx.description,
+              timestamp: tx.createdAt.toLocaleString(),
+              status: 'completed'
+            })),
             charts: {
-              monthly: [1200, 1800, 2100, 1900, 2450, 2340],
-              categories: { campaigns: 40, csr: 35, awareness: 25 }
+              monthly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              categories: {
+                community: 40,
+                schools: 25,
+                corporate: 20,
+                events: 15
+              }
             }
           };
-
         case 'diy-marketplace':
+          const diyStats = dataStore.getDIYStats(user.id);
           return {
             stats: {
-              productsListed: 34,
-              productsSold: 156,
-              totalEarnings: 45600,
-              avgRating: 4.7,
-              wasteUpcycled: 890,
-              nextOrder: 'Processing'
+              itemsListed: diyStats?.itemsListed || 12,
+              itemsSold: diyStats?.itemsSold || 8,
+              totalEarnings: diyStats?.totalEarnings || 2400,
+              rating: diyStats?.rating || 4.6,
+              activeListings: diyStats?.activeListings || 4,
+              completedSales: diyStats?.completedSales || 8
             },
             recentActivity: [
               {
                 id: '1',
                 type: 'sale',
-                description: 'Upcycled bookshelf sold',
-                timestamp: '2024-08-24 2:15 PM',
+                description: 'Sold Upcycled Wooden Planter for ₹450',
+                timestamp: '2 hours ago',
                 status: 'completed'
               },
               {
                 id: '2',
                 type: 'listing',
-                description: 'New product listed: Solar lamp',
-                timestamp: '2024-08-23 11:00 AM',
+                description: 'Listed new Recycled Bottle Lamp',
+                timestamp: '1 day ago',
                 status: 'active'
               },
               {
                 id: '3',
                 type: 'review',
-                description: 'Received 5-star review',
-                timestamp: '2024-08-22 4:45 PM',
+                description: 'Received 5-star review for Cardboard Organizer',
+                timestamp: '3 days ago',
                 status: 'positive'
               }
             ],
             charts: {
-              monthly: [25, 32, 28, 35, 42, 34],
-              categories: { furniture: 50, decor: 25, electronics: 15, crafts: 10 }
+              monthly: [150, 200, 180, 220, 280, 320],
+              categories: { 'Home Decor': 45, 'Lighting': 30, 'Storage': 25 }
             }
           };
-
         default:
           return {
             stats: {},
@@ -171,11 +167,11 @@ const RoleSpecificDashboard = () => {
       }
     };
 
-    setDashboardData(getMockData());
-  }, [user?.subType]);
+    setDashboardData(getDynamicData());
+  }, [user?.subtype, user?.id]);
 
   const getSubTypeTitle = () => {
-    switch (user?.subType) {
+    switch (user?.subtype) {
       case 'trash-generator':
         return 'Waste Generator Dashboard';
       case 'ngo-business':
@@ -188,7 +184,7 @@ const RoleSpecificDashboard = () => {
   };
 
   const getSubTypeIcon = () => {
-    switch (user?.subType) {
+    switch (user?.subtype) {
       case 'trash-generator':
         return Recycle;
       case 'ngo-business':
@@ -205,7 +201,7 @@ const RoleSpecificDashboard = () => {
 
     const { stats } = dashboardData;
     
-    switch (user?.subType) {
+    switch (user?.subtype) {
       case 'trash-generator':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -367,8 +363,8 @@ const RoleSpecificDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Products Listed</p>
-                    <p className="text-2xl font-bold text-primary">{stats.productsListed}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Items Listed</p>
+                    <p className="text-2xl font-bold text-primary">{stats.itemsListed}</p>
                   </div>
                   <Package className="h-8 w-8 text-primary" />
                 </div>
@@ -379,8 +375,8 @@ const RoleSpecificDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Products Sold</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.productsSold}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Items Sold</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.itemsSold}</p>
                   </div>
                   <ShoppingCart className="h-8 w-8 text-green-600" />
                 </div>
@@ -403,8 +399,8 @@ const RoleSpecificDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Avg Rating</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.avgRating}⭐</p>
+                    <p className="text-sm font-medium text-muted-foreground">Rating</p>
+                    <p className="text-2xl font-bold text-yellow-600">{stats.rating}⭐</p>
                   </div>
                   <Star className="h-8 w-8 text-yellow-600" />
                 </div>
@@ -415,8 +411,8 @@ const RoleSpecificDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Waste Upcycled</p>
-                    <p className="text-2xl font-bold text-purple-600">{stats.wasteUpcycled}kg</p>
+                    <p className="text-sm font-medium text-muted-foreground">Active Listings</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats.activeListings}</p>
                   </div>
                   <Recycle className="h-8 w-8 text-purple-600" />
                 </div>
@@ -427,8 +423,8 @@ const RoleSpecificDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Next Order</p>
-                    <p className="text-lg font-bold text-orange-600">{stats.nextOrder}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Completed Sales</p>
+                    <p className="text-2xl font-bold text-orange-600">{stats.completedSales}</p>
                   </div>
                   <Truck className="h-8 w-8 text-orange-600" />
                 </div>
@@ -483,24 +479,41 @@ const RoleSpecificDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        {renderStatsCards()}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {dashboardData.stats.map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <Card key={index} className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+                    </div>
+                    <div className={`p-3 rounded-full bg-muted ${stat.color}`}>
+                      <IconComponent className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-        {/* Charts and Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          {/* Monthly Trends Chart */}
+        {/* Charts Section */}
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          {/* Main Chart */}
           <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <BarChart3 className="h-5 w-5" />
-                <span>Monthly Trends</span>
+                <TrendingUp className="h-5 w-5 text-success" />
+                <span>{getChartTitle()}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                📊 Monthly trend chart would be displayed here
-                <div className="ml-4 text-sm">
-                  Data: [{dashboardData.charts.monthly.join(', ')}]
-                </div>
+              <div className="h-64">
+                <UserChart type={getChartType()} userStats={userStats} />
               </div>
             </CardContent>
           </Card>

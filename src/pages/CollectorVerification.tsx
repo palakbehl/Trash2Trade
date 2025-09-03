@@ -322,7 +322,26 @@ const CollectorVerification = () => {
                   <p className="text-muted-foreground mb-2">
                     Upload ID Proof (Aadhaar, PAN, Driving License)
                   </p>
-                  <Button type="button" variant="outline">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.pdf,.jpg,.jpeg,.png';
+                      input.multiple = true;
+                      input.onchange = (e) => {
+                        const files = (e.target as HTMLInputElement).files;
+                        if (files) {
+                          toast({
+                            title: 'Files Selected',
+                            description: `${files.length} file(s) selected for ID proof`,
+                          });
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
                     Choose Files
                   </Button>
                 </div>
@@ -332,7 +351,26 @@ const CollectorVerification = () => {
                   <p className="text-muted-foreground mb-2">
                     Upload Vehicle Registration (if applicable)
                   </p>
-                  <Button type="button" variant="outline">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.pdf,.jpg,.jpeg,.png';
+                      input.multiple = true;
+                      input.onchange = (e) => {
+                        const files = (e.target as HTMLInputElement).files;
+                        if (files) {
+                          toast({
+                            title: 'Files Selected',
+                            description: `${files.length} file(s) selected for vehicle registration`,
+                          });
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
                     Choose Files
                   </Button>
                 </div>

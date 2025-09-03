@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { 
   Search, 
   Filter, 
@@ -48,6 +49,7 @@ const EcoStore = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addItem, setIsOpen, getTotalItems } = useCart();
 
   // Restrict access to users only (not collectors)
   useEffect(() => {
@@ -70,7 +72,6 @@ const EcoStore = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [cart, setCart] = useState<string[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
 
   const categories = [
@@ -217,11 +218,21 @@ const EcoStore = () => {
   }, [products, selectedCategory, searchQuery]);
 
   const addToCart = (productId: string) => {
-    setCart(prev => [...prev, productId]);
-    toast({
-      title: 'Added to Cart! 🛒',
-      description: 'Product has been added to your cart.',
-    });
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      addItem({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        category: product.category,
+        description: product.description,
+      });
+      toast({
+        title: 'Added to Cart! 🛒',
+        description: 'Product has been added to your cart.',
+      });
+    }
   };
 
   const toggleWishlist = (productId: string) => {
@@ -532,12 +543,12 @@ const EcoStore = () => {
         </Dialog>
 
         {/* Cart Summary */}
-        {cart.length > 0 && (
+        {getTotalItems() > 0 && (
           <div className="fixed bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-eco">
             <div className="flex items-center space-x-3">
               <ShoppingCart className="h-5 w-5 text-primary" />
-              <span className="font-semibold">{cart.length} items in cart</span>
-              <Button size="sm" className="bg-gradient-eco">
+              <span className="font-semibold">{getTotalItems()} items in cart</span>
+              <Button size="sm" className="bg-gradient-eco" onClick={() => setIsOpen(true)}>
                 View Cart
               </Button>
             </div>

@@ -1,24 +1,26 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-export type UserRole = 'user' | 'collector';
-export type UserSubType = 'trash-generator' | 'ngo-business' | 'diy-marketplace';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { dataStore } from '@/lib/dynamicDataStore';
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
-  subType?: UserSubType;
-  avatar?: string;
-  greenCoins?: number;
+  role: 'user' | 'collector' | 'admin';
+  subtype?: 'trash-generator' | 'ngo-business' | 'diy-marketplace';
+  greenCoins: number;
   ecoScore?: number;
+  isVerified: boolean;
+  location?: string;
+  phone?: string;
+  createdAt: Date | { toDate: () => Date };
+  updatedAt: Date | { toDate: () => Date };
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string, role: UserRole, subType?: UserSubType) => Promise<boolean>;
-  signup: (name: string, email: string, password: string, role: UserRole, subType?: UserSubType) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string, role: 'user' | 'collector') => Promise<boolean>;
+  signup: (name: string, email: string, password: string, role: 'user' | 'collector' | 'admin', subtype?: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -32,108 +34,111 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock users for development
-  const mockUsers = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'user@trash2trade.com',
-      role: 'user' as UserRole,
-      subType: 'trash-generator' as UserSubType,
-      greenCoins: 150,
-      ecoScore: 78,
-    },
-    {
-      id: '2',
-      name: 'Maria Garcia',
-      email: 'collector@trash2trade.com',
-      role: 'collector' as UserRole,
-      greenCoins: 250,
-      ecoScore: 92,
-    },
-    {
-      id: '3',
-      name: 'Green Earth NGO',
-      email: 'ngo@trash2trade.com',
-      role: 'user' as UserRole,
-      subType: 'ngo-business' as UserSubType,
-      greenCoins: 500,
-      ecoScore: 95,
-    },
-    {
-      id: '4',
-      name: 'Sarah DIY',
-      email: 'diy@trash2trade.com',
-      role: 'user' as UserRole,
-      subType: 'diy-marketplace' as UserSubType,
-      greenCoins: 300,
-      ecoScore: 85,
-    },
-  ];
-
   useEffect(() => {
-    // Check for stored user
-    const storedUser = localStorage.getItem('trash2trade_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Check for existing user in localStorage
+    const checkExistingUser = () => {
+      setIsLoading(true);
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          localStorage.removeItem('currentUser');
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkExistingUser();
   }, []);
 
-  const login = async (email: string, password: string, role: UserRole, subType?: UserSubType): Promise<boolean> => {
+  const login = async (email: string, password: string, role: 'user' | 'collector'): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Mock authentication - find user by email and role
-    let foundUser = mockUsers.find(u => u.email === email && u.role === role);
-    
-    // If user role and subType provided, match both
-    if (role === 'user' && subType) {
-      foundUser = mockUsers.find(u => u.email === email && u.role === role && u.subType === subType);
-    }
-    
-    if (foundUser && password === 'password123') {
-      setUser(foundUser);
-      localStorage.setItem('trash2trade_user', JSON.stringify(foundUser));
+    try {
+      // Find user in dynamic data store by email and role
+      const users = dataStore.getAllUsers();
+      const foundUser = users.find(u => u.email === email && (u.role === role || role === 'user'));
+      
+      if (foundUser) {
+        setUser(foundUser);
+        localStorage.setItem('currentUser', JSON.stringify(foundUser));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    } finally {
       setIsLoading(false);
-      return true;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const signup = async (name: string, email: string, password: string, role: UserRole, subType?: UserSubType): Promise<boolean> => {
+  const signup = async (name: string, email: string, password: string, role: 'user' | 'collector' | 'admin', subtype?: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Mock signup - create new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-      role,
-      subType,
-      greenCoins: 0,
-      ecoScore: 0,
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('trash2trade_user', JSON.stringify(newUser));
-    setIsLoading(false);
-    return true;
+    try {
+      console.log('Starting signup process...', { name, email, role, subtype });
+      
+      // Create new user in dynamic data store
+      const newUserId = `usr_${Date.now()}`;
+      const newUser: User = {
+        id: newUserId,
+        name,
+        email,
+        role: role as 'user' | 'collector' | 'admin',
+        subtype: subtype as 'trash-generator' | 'ngo-business' | 'diy-marketplace' | undefined,
+        greenCoins: 0,
+        ecoScore: 0,
+        isVerified: false,
+        location: '',
+        phone: '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      dataStore.addUser(newUser);
+      
+      if (newUser) {
+        setUser(newUser);
+        localStorage.setItem('currentUser', JSON.stringify(newUser));
+        console.log('User created successfully');
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('trash2trade_user');
+  const logout = async (): Promise<void> => {
+    try {
+      setUser(null);
+      localStorage.removeItem('currentUser');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value: AuthContextType = {
+    user,
+    login,
+    signup,
+    logout,
+    isLoading,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

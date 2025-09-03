@@ -51,7 +51,7 @@ const BookPickup = () => {
 
   const [errors, setErrors] = useState<Partial<BookingForm>>({});
 
-  if (!user || user.role !== 'citizen') {
+  if (!user || (user.role !== 'user' || user.subtype !== 'trash-generator')) {
     return <div>Access denied</div>;
   }
 
@@ -405,50 +405,75 @@ const BookPickup = () => {
                 <div className="space-y-4">
                   <h3 className="font-semibold">Review Your Booking</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Waste Type</p>
-                        <div className="flex items-center space-x-2">
-                          <span>{selectedWasteType?.icon}</span>
-                          <span className="font-medium capitalize">{formData.wasteType}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {wasteTypes.map((type) => (
+                      <div
+                        key={type.value}
+                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                          formData.wasteType === type.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setFormData({ ...formData, wasteType: type.value })}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="text-2xl">{type.icon}</div>
+                          <div className="flex-1">
+                            <h3 className="font-medium">{type.label}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              ₹{type.pricePerKg}/kg
+                            </p>
+                            <p className="text-xs text-success">
+                              Min: {type.minQuantity} kg
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div>
-                        <p className="text-sm text-muted-foreground">Quantity</p>
-                        <p className="font-medium">{formData.quantity} kg</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-muted-foreground">Urgency</p>
-                        <Badge variant={formData.urgency === 'urgent' ? 'destructive' : 'secondary'}>
-                          {formData.urgency}
-                        </Badge>
+                    ))}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Waste Type</p>
+                      <div className="flex items-center space-x-2">
+                        <span>{selectedWasteType?.icon}</span>
+                        <span className="font-medium capitalize">{formData.wasteType}</span>
                       </div>
                     </div>
                     
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Date & Time</p>
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
-                          <span className="font-medium">
-                            {new Date(formData.preferredDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Clock className="h-4 w-4" />
-                          <span className="font-medium">{formData.preferredTime}</span>
-                        </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Quantity</p>
+                      <p className="font-medium">{formData.quantity} kg</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-muted-foreground">Urgency</p>
+                      <Badge variant={formData.urgency === 'urgent' ? 'destructive' : 'secondary'}>
+                        {formData.urgency}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Date & Time</p>
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4" />
+                        <span className="font-medium">
+                          {new Date(formData.preferredDate).toLocaleDateString()}
+                        </span>
                       </div>
-                      
-                      <div>
-                        <p className="text-sm text-muted-foreground">Estimated Reward</p>
-                        <div className="flex items-center space-x-2">
-                          <Gift className="h-4 w-4 text-success" />
-                          <span className="font-medium text-success">{estimatedGreenCoins} GreenCoins</span>
-                        </div>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Clock className="h-4 w-4" />
+                        <span className="font-medium">{formData.preferredTime}</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-muted-foreground">Estimated Reward</p>
+                      <div className="flex items-center space-x-2">
+                        <Gift className="h-4 w-4 text-success" />
+                        <span className="font-medium text-success">{estimatedGreenCoins} GreenCoins</span>
                       </div>
                     </div>
                   </div>

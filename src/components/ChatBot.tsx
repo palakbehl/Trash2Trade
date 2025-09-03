@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,8 @@ import {
   Bot, 
   User,
   Minimize2,
-  Maximize2
+  Maximize2,
+  Move
 } from 'lucide-react';
 
 interface Message {
@@ -32,6 +33,10 @@ const ChatBot = () => {
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
+  const [position, setPosition] = useState({ x: 24, y: 24 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const chatRef = useRef<HTMLDivElement>(null);
 
   const quickReplies = [
     'How does waste collection work?',
@@ -92,6 +97,49 @@ const ChatBot = () => {
     handleSendMessage();
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!chatRef.current) return;
+    
+    const rect = chatRef.current.getBoundingClientRect();
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const newX = e.clientX - dragOffset.x;
+    const newY = e.clientY - dragOffset.y;
+    
+    // Keep within viewport bounds
+    const maxX = window.innerWidth - 320; // Chat width
+    const maxY = window.innerHeight - (isMinimized ? 64 : 384); // Chat height
+    
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY))
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset]);
+
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50">
@@ -107,14 +155,25 @@ const ChatBot = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
-      <Card className={`w-80 shadow-2xl border-0 transition-all duration-300 ${isMinimized ? 'h-16' : 'h-96'}`} style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem' }}>
-        <CardHeader className="bg-gradient-eco text-white p-4 rounded-t-lg">
+      <Card className={`w-80 shadow-2xl border-0 transition-all duration-300 ${isMinimized ? 'h-16' : 'h-96'}`}>
+        <CardHeader 
+          className="bg-gradient-eco text-white p-4 rounded-t-lg cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Bot className="h-6 w-6" />
               <CardTitle className="text-lg">Trash2Trade AI</CardTitle>
             </div>
             <div className="flex space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-1 h-8 w-8 cursor-pointer"
+                title="Drag to move"
+              >
+                <Move className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

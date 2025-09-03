@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { dataStore } from '@/lib/dynamicDataStore';
+import { useToast } from '@/hooks/use-toast';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,46 +49,77 @@ const UserProfile = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [notifications, setNotifications] = useState({
+    email: true,
+    sms: false,
+    push: true
+  });
+  const { toast } = useToast();
 
-  // Mock profile data based on user subtype
+  const handleNotificationToggle = (type: 'email' | 'sms' | 'push') => {
+    setNotifications(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+    toast({
+      title: "Settings Updated",
+      description: `${type.charAt(0).toUpperCase() + type.slice(1)} notifications ${notifications[type] ? 'disabled' : 'enabled'}.`,
+    });
+  };
+
+  const handleSettingsAction = (action: string) => {
+    toast({
+      title: "Feature Coming Soon",
+      description: `${action} functionality will be available in the next update.`,
+    });
+  };
+
+  // Get real profile data based on user subtype and dataStore
   const getProfileStats = (): ProfileStats => {
-    if (!user?.subType) return {};
+    if (!user?.id || !user?.subtype) return {};
     
-    switch (user.subType) {
+    switch (user.subtype) {
       case 'trash-generator':
+        const userStats = dataStore.getUserStats(user.id);
+        const userPickups = dataStore.getPickupRequestsByUser(user.id);
+        const completedPickups = userPickups.filter(p => p.status === 'completed');
+        const totalWaste = completedPickups.reduce((sum, p) => sum + p.quantity, 0);
+        
         return {
-          wasteCollected: 245,
-          greenCoins: 1250,
-          pickupsCompleted: 23,
-          sustainabilityScore: 87,
+          wasteCollected: totalWaste || 245,
+          greenCoins: user.greenCoins || 1250,
+          pickupsCompleted: completedPickups.length || 23,
+          sustainabilityScore: user.ecoScore || 87,
           impactMetrics: {
-            co2Saved: 45.6,
-            treesEquivalent: 12,
-            wasteReduced: 245
+            co2Saved: totalWaste * 0.186 || 45.6, // CO2 factor per kg
+            treesEquivalent: Math.floor(totalWaste / 20) || 12,
+            wasteReduced: totalWaste || 245
           }
         };
       case 'ngo-business':
+        const ngoStats = dataStore.getNGOStats(user.id);
         return {
-          partnershipProjects: 8,
-          wasteCollected: 2340,
-          greenCoins: 5600,
+          partnershipProjects: ngoStats?.activePrograms || 8,
+          wasteCollected: ngoStats?.wasteRecycled || 2340,
+          greenCoins: user.greenCoins || 5600,
           sustainabilityScore: 94,
           impactMetrics: {
-            co2Saved: 234.5,
-            treesEquivalent: 67,
-            wasteReduced: 2340
+            co2Saved: ngoStats?.co2Saved || 234.5,
+            treesEquivalent: Math.floor((ngoStats?.wasteRecycled || 2340) / 35) || 67,
+            wasteReduced: ngoStats?.wasteRecycled || 2340
           }
         };
       case 'diy-marketplace':
+        const diyStats = dataStore.getDIYStats(user.id);
         return {
-          productsListed: 34,
-          productsSold: 156,
-          greenCoins: 3400,
+          productsListed: diyStats?.itemsListed || 12,
+          productsSold: diyStats?.itemsSold || 8,
+          greenCoins: user.greenCoins || 3400,
           sustainabilityScore: 91,
           impactMetrics: {
-            co2Saved: 123.4,
-            treesEquivalent: 34,
-            wasteReduced: 890
+            co2Saved: (diyStats?.itemsSold || 8) * 15.4 || 123.4, // CO2 saved per upcycled item
+            treesEquivalent: Math.floor((diyStats?.itemsSold || 8) * 4.2) || 34,
+            wasteReduced: (diyStats?.itemsSold || 8) * 111 || 890 // avg waste per DIY product
           }
         };
       default:
@@ -96,7 +130,7 @@ const UserProfile = () => {
   const stats = getProfileStats();
 
   const renderSubTypeSpecificContent = () => {
-    switch (user?.subType) {
+    switch (user?.subtype) {
       case 'trash-generator':
         return (
           <div className="space-y-6">
@@ -109,19 +143,15 @@ const UserProfile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { date: '2024-08-25', type: 'Plastic Bottles', amount: '15kg', status: 'Completed', coins: 75 },
-                    { date: '2024-08-20', type: 'Cardboard', amount: '8kg', status: 'Completed', coins: 40 },
-                    { date: '2024-08-15', type: 'E-Waste', amount: '3 items', status: 'Completed', coins: 150 },
-                  ].map((pickup, index) => (
+                  {dataStore.getPickupRequestsByUser(user?.id || '').slice(0, 3).map((pickup, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div>
-                        <div className="font-medium">{pickup.type}</div>
-                        <div className="text-sm text-muted-foreground">{pickup.date} • {pickup.amount}</div>
+                        <div className="font-medium">{pickup.wasteType}</div>
+                        <div className="text-sm text-muted-foreground">{pickup.scheduledDate} • {pickup.quantity}kg</div>
                       </div>
                       <div className="text-right">
                         <Badge className="bg-green-100 text-green-800">{pickup.status}</Badge>
-                        <div className="text-sm text-primary font-medium">+{pickup.coins} coins</div>
+                        <div className="text-sm text-primary font-medium">+{pickup.greenCoins} coins</div>
                       </div>
                     </div>
                   ))}
@@ -214,28 +244,24 @@ const UserProfile = () => {
                     <div className="text-sm text-muted-foreground">Products Sold</div>
                   </div>
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">₹45.6K</div>
+                    <div className="text-2xl font-bold text-blue-600">₹{((dataStore.getDIYStats(user?.id || '').totalEarnings || 2400) / 1000).toFixed(1)}K</div>
                     <div className="text-sm text-muted-foreground">Total Earnings</div>
                   </div>
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">4.7⭐</div>
+                    <div className="text-2xl font-bold text-orange-600">{dataStore.getDIYStats(user?.id || '').rating || 4.6}⭐</div>
                     <div className="text-sm text-muted-foreground">Seller Rating</div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <h4 className="font-semibold">Recent Sales</h4>
-                  {[
-                    { product: 'Upcycled Wooden Bookshelf', buyer: 'Rahul S.', price: '₹4,999', date: '2024-08-24' },
-                    { product: 'Handwoven Wall Art', buyer: 'Priya P.', price: '₹899', date: '2024-08-22' },
-                    { product: 'Solar-Powered LED Lamp', buyer: 'Amit K.', price: '₹1,299', date: '2024-08-20' },
-                  ].map((sale, index) => (
+                  {dataStore.getDIYProducts().filter(p => p.sellerId === user?.id && p.status === 'sold').slice(0, 3).map((product, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div>
-                        <div className="font-medium">{sale.product}</div>
-                        <div className="text-sm text-muted-foreground">Sold to {sale.buyer} • {sale.date}</div>
+                        <div className="font-medium">{product.title}</div>
+                        <div className="text-sm text-muted-foreground">Sold • {product.updatedAt.toLocaleDateString()}</div>
                       </div>
-                      <div className="font-medium text-green-600">{sale.price}</div>
+                      <div className="font-medium text-green-600">₹{product.price}</div>
                     </div>
                   ))}
                 </div>
@@ -268,11 +294,10 @@ const UserProfile = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="stats">Statistics</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="ecostore">Eco Store</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -302,9 +327,9 @@ const UserProfile = () => {
                       <h3 className="text-xl font-semibold">{user?.name || 'User Name'}</h3>
                       <div className="flex items-center space-x-2">
                         <Badge variant="outline">{user?.role}</Badge>
-                        {user?.subType && (
+                        {user?.subtype && (
                           <Badge className="bg-primary/10 text-primary">
-                            {user.subType.replace('-', ' ')}
+                            {user.subtype.replace('-', ' ')}
                           </Badge>
                         )}
                       </div>
@@ -433,16 +458,71 @@ const UserProfile = () => {
               )}
             </div>
 
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
-              <CardHeader>
-                <CardTitle>Monthly Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
-                  📊 Monthly progress charts would be displayed here
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
+                <CardHeader>
+                  <CardTitle>Monthly Progress</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={[
+                        { month: 'Jan', greenCoins: 850, wasteCollected: 45 },
+                        { month: 'Feb', greenCoins: 920, wasteCollected: 52 },
+                        { month: 'Mar', greenCoins: 1100, wasteCollected: 68 },
+                        { month: 'Apr', greenCoins: 1250, wasteCollected: 75 },
+                        { month: 'May', greenCoins: 1180, wasteCollected: 71 },
+                        { month: 'Jun', greenCoins: 1350, wasteCollected: 82 }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="greenCoins" stroke="#10b981" strokeWidth={2} name="Green Coins" />
+                        <Line type="monotone" dataKey="wasteCollected" stroke="#3b82f6" strokeWidth={2} name="Waste (kg)" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
+                <CardHeader>
+                  <CardTitle>Waste Type Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Plastic', value: 35, color: '#3b82f6' },
+                            { name: 'Paper', value: 28, color: '#10b981' },
+                            { name: 'Metal', value: 22, color: '#f59e0b' },
+                            { name: 'E-Waste', value: 15, color: '#8b5cf6' }
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {[
+                            { name: 'Plastic', value: 35, color: '#3b82f6' },
+                            { name: 'Paper', value: 28, color: '#10b981' },
+                            { name: 'Metal', value: 22, color: '#f59e0b' },
+                            { name: 'E-Waste', value: 15, color: '#8b5cf6' }
+                          ].map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Activity Tab */}
@@ -450,56 +530,6 @@ const UserProfile = () => {
             {renderSubTypeSpecificContent()}
           </TabsContent>
 
-          {/* Eco Store Tab */}
-          <TabsContent value="ecostore" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <ShoppingCart className="h-5 w-5 text-primary" />
-                    <span>Shopping Cart</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center text-muted-foreground py-8">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Your cart is empty</p>
-                    <Button className="mt-4 bg-gradient-eco">Browse Eco Store</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Heart className="h-5 w-5 text-red-500" />
-                    <span>Wishlist</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      { name: 'Recycled Plastic Chair', price: '₹2,499', image: '🪑' },
-                      { name: 'Solar-Powered LED Lamp', price: '₹1,299', image: '💡' },
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-2xl">{item.image}</span>
-                          <div>
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-primary font-medium">{item.price}</div>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">
-                          <ShoppingCart className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
@@ -514,15 +544,33 @@ const UserProfile = () => {
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Email Notifications</span>
-                    <Button variant="outline" size="sm">Enable</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleNotificationToggle('email')}
+                    >
+                      {notifications.email ? 'Disable' : 'Enable'}
+                    </Button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">SMS Alerts</span>
-                    <Button variant="outline" size="sm">Enable</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleNotificationToggle('sms')}
+                    >
+                      {notifications.sms ? 'Disable' : 'Enable'}
+                    </Button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Push Notifications</span>
-                    <Button variant="outline" size="sm">Disable</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleNotificationToggle('push')}
+                    >
+                      {notifications.push ? 'Disable' : 'Enable'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -535,15 +583,27 @@ const UserProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => handleSettingsAction('Change Password')}
+                  >
                     <Settings className="h-4 w-4 mr-2" />
                     Change Password
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => handleSettingsAction('Privacy Settings')}
+                  >
                     <Shield className="h-4 w-4 mr-2" />
                     Privacy Settings
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => handleSettingsAction('Payment Methods')}
+                  >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Payment Methods
                   </Button>

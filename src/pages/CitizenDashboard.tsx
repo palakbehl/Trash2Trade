@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,26 +15,74 @@ import {
   CheckCircle,
   Star,
   TrendingUp,
-  Plus
+  Plus,
+  BarChart3,
+  Activity
 } from 'lucide-react';
 import { mockPickups, badges } from '@/data/mockData';
+import UserChart from '@/components/charts/UserChart';
+import { dataStore } from '@/lib/dynamicDataStore';
 
 const CitizenDashboard = () => {
   const { user } = useAuth();
+  const [userStats, setUserStats] = useState<any>(null);
+  const [userPickups, setUserPickups] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  if (!user || user.role !== 'citizen') {
-    return <div>Access denied</div>;
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        // Get dynamic user stats
+        const stats = dataStore.getUserStats(user.id);
+        setUserStats(stats);
+        
+        // Get user's pickup requests
+        const pickups = dataStore.getPickupRequestsByUser(user.id);
+        setUserPickups(pickups);
+        
+        // Get recent activity
+        const activity = dataStore.getRecentActivity(user.id);
+        setRecentActivity(activity);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading citizen data:', error);
+        setLoading(false);
+      }
+    }
+  }, [user?.id]);
+  
+  if (!user || (user.role !== 'user' || user.subtype !== 'trash-generator')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You must be logged in as a citizen to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   // Filter pickups for current user
-  const userPickups = mockPickups.filter(pickup => pickup.userId === user.id);
   const completedPickups = userPickups.filter(pickup => pickup.status === 'completed');
   const pendingPickups = userPickups.filter(pickup => pickup.status === 'pending' || pickup.status === 'accepted');
 
   const stats = [
     {
       title: 'GreenCoins',
-      value: user.greenCoins || 0,
+      value: userStats?.greenCoins || user.greenCoins || 185,
       change: '+25 this week',
       icon: Gift,
       color: 'text-success',
@@ -43,7 +91,7 @@ const CitizenDashboard = () => {
     },
     {
       title: 'Eco Score',
-      value: user.ecoScore || 0,
+      value: userStats?.ecoScore || user.ecoScore || 78,
       change: '+12 this month',
       icon: Trophy,
       color: 'text-warning',
@@ -52,16 +100,16 @@ const CitizenDashboard = () => {
     },
     {
       title: 'Completed Pickups',
-      value: completedPickups.length,
-      change: 'This month: 3',
+      value: userStats?.totalPickups || completedPickups.length || 17,
+      change: `This month: ${userStats?.monthlyPickups || 5}`,
       icon: CheckCircle,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      trend: '+3',
+      trend: `+${userStats?.monthlyPickups || 5}`,
     },
     {
       title: 'Impact Level',
-      value: 'Eco Warrior',
+      value: userStats?.impactLevel || 'Eco Warrior',
       change: 'Next: Green Champion',
       icon: Star,
       color: 'text-secondary',
@@ -137,6 +185,51 @@ const CitizenDashboard = () => {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Eco Score Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <TrendingUp className="h-5 w-5 text-success" />
+                <span>Eco Score Progress</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <UserChart type="ecoScore" userStats={userStats} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Green Coins Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Gift className="h-5 w-5 text-primary" />
+                <span>Green Coins Activity</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <UserChart type="greenCoins" userStats={userStats} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Waste Generated Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Recycle className="h-5 w-5 text-warning" />
+                <span>Waste Types Generated</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <UserChart type="wasteGenerated" userStats={userStats} />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Quick Actions */}
           <Card>
             <CardHeader>

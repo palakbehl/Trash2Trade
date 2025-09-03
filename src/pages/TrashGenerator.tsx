@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -20,9 +20,14 @@ import {
   CreditCard,
   CheckCircle,
   Plus,
-  Minus
+  Minus,
+  TrendingUp,
+  Gift,
+  Trophy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { dataStore } from '@/lib/dynamicDataStore';
 
 const schema = yup.object({
   wasteTypes: yup.array().min(1, 'Select at least one waste type').required(),
@@ -52,8 +57,24 @@ interface TrashFormData {
 
 const TrashGenerator = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [selectedWasteTypes, setSelectedWasteTypes] = useState<string[]>([]);
+  const [userStats, setUserStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        const stats = dataStore.getUserStats(user.id);
+        setUserStats(stats);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading user stats:', error);
+        setLoading(false);
+      }
+    }
+  }, [user?.id]);
 
   const {
     register,
@@ -82,7 +103,7 @@ const TrashGenerator = () => {
       icon: Wine,
       minQuantity: 10,
       unit: 'bottles',
-      image: '/api/placeholder/150/150'
+      image: '🍶'
     },
     {
       id: 'cardboard',
@@ -153,8 +174,47 @@ const TrashGenerator = () => {
 
   const onSubmit = async (data: TrashFormData) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!user?.id) {
+        toast({
+          title: 'Error',
+          description: 'Please log in to submit a pickup request.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Create pickup request using dataStore
+      const estimatedValue = data.quantity * 15; // ₹15 per kg
+      const greenCoins = Math.floor(estimatedValue * 0.1); // 10% of value as green coins
+      
+      const requestData = {
+        userId: user.id,
+        wasteType: data.wasteTypes.join(', '),
+        quantity: data.quantity,
+        address: data.address,
+        preferredTime: new Date(`${data.pickupDate}T${data.pickupTime}`),
+        scheduledDate: new Date(`${data.pickupDate}T${data.pickupTime}`),
+        notes: data.notes,
+        upiId: data.upiId,
+        plasticType: data.plasticType,
+        status: 'pending' as const,
+        estimatedValue,
+        greenCoins
+      };
+
+      const newRequest = dataStore.addPickupRequest(requestData);
+      
+      // Update user stats
+      if (userStats) {
+        const updatedStats = {
+          ...userStats,
+          totalPickups: (userStats.totalPickups || 0) + 1,
+          monthlyPickups: (userStats.monthlyPickups || 0) + 1,
+          greenCoins: (userStats.greenCoins || 0) + Math.floor(data.quantity * 2),
+          ecoScore: Math.min(100, (userStats.ecoScore || 0) + Math.floor(data.quantity * 0.5))
+        };
+        setUserStats(updatedStats);
+      }
       
       setShowSuccessDialog(true);
       
@@ -174,6 +234,17 @@ const TrashGenerator = () => {
   const selectedWaste = watch('wasteTypes');
   const quantity = watch('quantity');
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/20 p-4">
       {/* Animated Background */}
@@ -182,7 +253,54 @@ const TrashGenerator = () => {
         <div className="absolute bottom-20 right-10 w-40 h-40 bg-secondary/15 rounded-full blur-xl animate-float-delayed"></div>
       </div>
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* User Stats Header */}
+        {userStats && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-success/10 rounded-full">
+                    <Gift className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">GreenCoins</p>
+                    <p className="text-2xl font-bold text-success">{userStats.greenCoins || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-warning/10 rounded-full">
+                    <Trophy className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Eco Score</p>
+                    <p className="text-2xl font-bold text-warning">{userStats.ecoScore || 0}/100</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Pickups</p>
+                    <p className="text-2xl font-bold text-primary">{userStats.totalPickups || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-eco bg-clip-text text-transparent mb-4">
             Schedule Waste Pickup

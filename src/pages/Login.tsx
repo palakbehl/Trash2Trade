@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,7 @@ const schema = yup.object({
 interface FormData {
   email: string;
   password: string;
-  role: UserRole;
+  role: 'user' | 'collector';
 }
 
 type UserSubType = 'trash-generator' | 'ngo-business' | 'diy-marketplace';
@@ -44,11 +44,11 @@ const Login = () => {
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
-      role: 'user' as UserRole,
+      role: 'user' as 'user' | 'collector',
     },
   });
 
-  const selectedRole = watch('role');
+  const watchedRole = watch('role');
 
   const onSubmit = async (data: FormData) => {
     if (data.role === 'user') {
@@ -59,22 +59,18 @@ const Login = () => {
     setIsLoading(true);
     try {
       const success = await login(data.email, data.password, data.role);
+      
       if (success) {
         toast({
-          title: 'Welcome back! 🌱',
-          description: 'Successfully signed in to your account.',
+          title: 'Login successful!',
+          description: 'Welcome back to Trash2Trade!',
         });
         
         // Navigate based on role
-        switch (data.role) {
-          case 'collector':
-            navigate('/collector');
-            break;
-          case 'ngo':
-            navigate('/ngo');
-            break;
-          default:
-            navigate('/');
+        if (data.role === 'collector') {
+          navigate('/collector/dashboard');
+        } else {
+          navigate('/');
         }
       } else {
         toast({
@@ -101,7 +97,25 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(formData.email, formData.password, 'user', selectedUserType);
+      // Try to login with demo credentials based on subtype
+      let email = formData.email;
+      
+      // If using demo pattern, map to correct demo email
+      if (email === 'user@trash2trade.com' || email.includes('@trash2trade.com')) {
+        switch (selectedUserType) {
+          case 'ngo-business':
+            email = 'ngo@trash2trade.com';
+            break;
+          case 'diy-marketplace':
+            email = 'diy@trash2trade.com';
+            break;
+          case 'trash-generator':
+            email = 'user@trash2trade.com';
+            break;
+        }
+      }
+      
+      const success = await login(email, formData.password, 'user');
       if (success) {
         toast({
           title: 'Welcome back! 🌱',
@@ -111,13 +125,13 @@ const Login = () => {
         // Navigate based on user subtype
         switch (selectedUserType) {
           case 'trash-generator':
-            navigate('/trash-generator');
+            navigate('/dashboard');
             break;
           case 'ngo-business':
-            navigate('/ngo-business');
+            navigate('/ngo/dashboard');
             break;
           case 'diy-marketplace':
-            navigate('/diy-marketplace');
+            navigate('/diy/dashboard');
             break;
           default:
             navigate('/dashboard');
@@ -218,8 +232,8 @@ const Login = () => {
               <div className="space-y-3">
                 <Label className="text-base font-medium">I am a...</Label>
                 <RadioGroup
-                  value={selectedRole}
-                  onValueChange={(value) => setValue('role', value as UserRole)}
+                  value={watchedRole}
+                  onValueChange={(value) => setValue('role', value as 'user' | 'collector')}
                   className="grid grid-cols-1 gap-3"
                 >
                   {roleOptions.map((option) => {
@@ -234,7 +248,7 @@ const Login = () => {
                         <Label
                           htmlFor={option.value}
                           className={`flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-md ${
-                            selectedRole === option.value
+                            watchedRole === option.value
                               ? `border-primary ${option.bgColor} shadow-glow`
                               : 'border-border hover:border-primary/50 hover:bg-primary/5'
                           }`}
@@ -313,9 +327,10 @@ const Login = () => {
             <div className="mt-6 p-4 bg-gradient-sunshine/20 rounded-xl border border-secondary/30">
               <p className="text-sm font-semibold text-foreground mb-2">Demo credentials:</p>
               <div className="text-sm space-y-1">
-                <p><strong>Email:</strong> Use role@trash2trade.com</p>
+                <p><strong>Users:</strong> user@trash2trade.com (then select subtype)</p>
+                <p><strong>Collector:</strong> collector@test.com</p>
                 <p><strong>Password:</strong> password123</p>
-                <p className="text-xs text-muted-foreground mt-2">Replace "role" with user, collector, ngo, or diy</p>
+                <p className="text-xs text-muted-foreground mt-2">For users, you'll select your specific role after login</p>
               </div>
             </div>
           </CardContent>

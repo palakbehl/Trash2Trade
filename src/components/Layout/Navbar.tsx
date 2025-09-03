@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import ShoppingCart from '@/components/ShoppingCart';
 import Logo from '@/components/ui/logo';
 import { 
   User, 
@@ -42,21 +43,21 @@ const Navbar = () => {
     
     switch (user.role) {
       case 'user':
-        if (user.subType === 'trash-generator') {
+        if (user.subtype === 'trash-generator') {
           return [
             { path: '/dashboard', label: 'Dashboard', icon: Home },
             { path: '/trash-generator', label: 'Book Pickup', icon: Calendar },
             { path: '/profile', label: 'Profile', icon: User },
             { path: '/eco-store', label: 'Eco Store', icon: Gift },
           ];
-        } else if (user.subType === 'ngo-business') {
+        } else if (user.subtype === 'ngo-business') {
           return [
             { path: '/dashboard', label: 'Dashboard', icon: Home },
             { path: '/ngo-business', label: 'Partnerships', icon: Heart },
             { path: '/profile', label: 'Profile', icon: User },
             { path: '/eco-store', label: 'Eco Store', icon: Gift },
           ];
-        } else if (user.subType === 'diy-marketplace') {
+        } else if (user.subtype === 'diy-marketplace') {
           return [
             { path: '/dashboard', label: 'Dashboard', icon: Home },
             { path: '/diy-marketplace', label: 'My Products', icon: BarChart3 },
@@ -91,7 +92,7 @@ const Navbar = () => {
                 <Link to="/about">About Us</Link>
               </Button>
               <Button variant="ghost" asChild>
-                <Link to="/admin">Admin Panel</Link>
+                <Link to="/admin-login">Admin Panel</Link>
               </Button>
               <Button variant="ghost" asChild>
                 <Link to="/login">Login</Link>
@@ -140,6 +141,11 @@ const Navbar = () => {
           </div>
           
           <div className="flex items-center space-x-2">
+            {/* Shopping Cart - only show for Trash Generators and NGO/Business users */}
+            {user && (
+              (user.role === 'user' && user.subtype === 'trash-generator') || 
+              (user.role === 'user' && user.subtype === 'ngo-business')
+            ) && <ShoppingCart />}
             
             {/* User Menu */}
             <DropdownMenu>

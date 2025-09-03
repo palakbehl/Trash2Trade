@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { dataStore } from '@/lib/dynamicDataStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft,
   MapPin,
@@ -24,15 +27,44 @@ import {
 const CollectorRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('distance');
   const [filterBy, setFilterBy] = useState('all');
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [acceptedRequests, setAcceptedRequests] = useState<string[]>([]);
+  const [availableRequests, setAvailableRequests] = useState<any[]>([]);
 
   if (!user || user.role !== 'collector') {
     return <div>Access denied</div>;
   }
 
-  const mockRequests = [
+  useEffect(() => {
+    // Load dynamic pickup requests
+    const pendingRequests = dataStore.getPendingPickupRequests().map(request => {
+      const requestUser = dataStore.getUser(request.userId);
+      return {
+        id: request.id,
+        customerName: requestUser?.name || 'Unknown User',
+        address: request.address,
+        distance: `${Math.random() * 3 + 0.5}`.substring(0, 3) + ' km', // Mock distance
+        wasteTypes: [request.wasteType.charAt(0).toUpperCase() + request.wasteType.slice(1)],
+        estimatedWeight: `${request.quantity} kg`,
+        urgency: request.quantity > 10 ? 'high' : request.quantity > 5 ? 'medium' : 'low',
+        payment: request.estimatedValue,
+        timeSlot: 'Flexible',
+        date: new Date(request.scheduledDate).toLocaleDateString(),
+        rating: 4.5 + Math.random() * 0.5,
+        phone: '+91 ' + Math.floor(Math.random() * 9000000000 + 1000000000),
+        notes: `Pickup ${request.wasteType} waste. Quantity: ${request.quantity}kg`,
+        status: 'available',
+        originalRequest: request
+      };
+    });
+    setAvailableRequests(pendingRequests);
+  }, []);
+
+  const mockRequests = availableRequests.length > 0 ? availableRequests : [
     {
       id: 'REQ001',
       customerName: 'Sarah Johnson',
@@ -109,21 +141,77 @@ const CollectorRequests = () => {
   };
 
   const handleAcceptRequest = (requestId: string) => {
-    // In a real app, this would call an API to accept the request
-    console.log('Accepting request:', requestId);
+    // Find the request in available requests
+    const request = availableRequests.find(req => req.id === requestId);
+    if (request && request.originalRequest && user?.id) {
+      // Accept the request in the data store
+      const success = dataStore.acceptPickupRequest(request.originalRequest.id, user.id);
+      if (success) {
+        setAcceptedRequests(prev => [...prev, requestId]);
+        // Remove from available requests
+        setAvailableRequests(prev => prev.filter(req => req.id !== requestId));
+        toast({
+          title: 'Request Accepted! 🚛',
+          description: 'The pickup request has been added to your active pickups.',
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to accept request. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // Fallback for mock requests
+      setAcceptedRequests(prev => [...prev, requestId]);
+      toast({
+        title: 'Request Accepted!',
+        description: 'The pickup request has been added to your active pickups.',
+        variant: 'default',
+      });
+    }
   };
 
-  const handleViewDetails = (requestId: string) => {
-    // Navigate to detailed view or open modal
-    console.log('Viewing details for:', requestId);
+  const handleViewDetails = (request: any) => {
+    setSelectedRequest(request);
   };
 
-  const filteredRequests = mockRequests.filter(request => {
-    const matchesSearch = request.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.address.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterBy === 'all' || request.urgency === filterBy;
-    return matchesSearch && matchesFilter;
-  });
+  const handleGetDirections = (address: string) => {
+    // Open Google Maps with directions
+    const encodedAddress = encodeURIComponent(address);
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+    window.open(mapsUrl, '_blank');
+    
+    toast({
+      title: 'Opening Directions',
+      description: 'Google Maps will open in a new tab with directions.',
+    });
+  };
+
+  const filteredRequests = mockRequests
+    .filter(request => {
+      const matchesSearch = request.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           request.address.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = filterBy === 'all' || request.urgency === filterBy;
+      const notAccepted = !acceptedRequests.includes(request.id);
+      return matchesSearch && matchesFilter && notAccepted;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'distance':
+          return parseFloat(a.distance) - parseFloat(b.distance);
+        case 'payment':
+          return b.payment - a.payment;
+        case 'urgency':
+          const urgencyOrder = { high: 3, medium: 2, low: 1 };
+          return urgencyOrder[b.urgency as keyof typeof urgencyOrder] - urgencyOrder[a.urgency as keyof typeof urgencyOrder];
+        case 'rating':
+          return b.rating - a.rating;
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -287,17 +375,77 @@ const CollectorRequests = () => {
                     Accept Request
                   </Button>
                   
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleViewDetails(request.id)}
-                    className="w-full"
-                  >
-                    View Details
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleViewDetails(request)}
+                        className="w-full"
+                      >
+                        View Details
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Pickup Request Details</DialogTitle>
+                      </DialogHeader>
+                      {selectedRequest && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="font-semibold">Customer Information</h4>
+                              <p><strong>Name:</strong> {selectedRequest.customerName}</p>
+                              <p><strong>Phone:</strong> {selectedRequest.phone}</p>
+                              <p><strong>Rating:</strong> ⭐ {selectedRequest.rating}</p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">Pickup Details</h4>
+                              <p><strong>Date:</strong> {selectedRequest.date}</p>
+                              <p><strong>Time:</strong> {selectedRequest.timeSlot}</p>
+                              <p><strong>Distance:</strong> {selectedRequest.distance}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Address</h4>
+                            <p>{selectedRequest.address}</p>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Waste Information</h4>
+                            <p><strong>Types:</strong> {selectedRequest.wasteTypes?.join(', ')}</p>
+                            <p><strong>Estimated Weight:</strong> {selectedRequest.estimatedWeight}</p>
+                            <p><strong>Payment:</strong> ${selectedRequest.payment}</p>
+                          </div>
+                          {selectedRequest.notes && (
+                            <div>
+                              <h4 className="font-semibold">Special Notes</h4>
+                              <p className="bg-muted p-3 rounded">{selectedRequest.notes}</p>
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-4">
+                            <Button 
+                              onClick={() => handleAcceptRequest(selectedRequest.id)}
+                              className="flex-1"
+                            >
+                              Accept Request
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleGetDirections(selectedRequest.address)}
+                              className="flex-1"
+                            >
+                              <Navigation className="h-4 w-4 mr-2" />
+                              Get Directions
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
 
                   <Button 
                     variant="ghost" 
                     size="sm"
+                    onClick={() => handleGetDirections(request.address)}
                     className="w-full"
                   >
                     <Navigation className="h-4 w-4 mr-2" />

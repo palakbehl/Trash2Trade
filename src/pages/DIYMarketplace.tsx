@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { dataStore } from '@/lib/dynamicDataStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,11 +71,49 @@ interface Product {
 }
 
 const DIYMarketplace = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [products, setProducts] = useState<any[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'browse' | 'sell'>('browse');
+  const [userStats, setUserStats] = useState<any>(null);
+
+  // Check if user has access (DIY marketplace users)
+  if (!user || (user.role !== 'user' && user.subtype !== 'diy-marketplace')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You must be logged in as a DIY marketplace user to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    // Load dynamic products and transform to match UI expectations
+    const allProducts = dataStore.getDIYProducts().map(product => ({
+      ...product,
+      seller: dataStore.getUser(product.sellerId)?.name || 'Unknown',
+      rating: 4.5, // Default rating
+      reviews: Math.floor(Math.random() * 50) + 1,
+      featured: Math.random() > 0.7,
+      createdAt: product.createdAt.toISOString()
+    }));
+    setProducts(allProducts);
+    
+    // Load user stats
+    if (user?.id) {
+      const stats = dataStore.getDIYStats(user.id);
+      setUserStats(stats);
+    }
+  }, [user?.id]);
 
   const {
     register,
@@ -101,105 +141,43 @@ const DIYMarketplace = () => {
     { value: 'fair', label: 'Fair' },
   ];
 
-  // Mock products data
-  const [products] = useState<Product[]>([
-    {
-      id: '1',
-      title: 'Upcycled Plastic Bottle Planters',
-      description: 'Beautiful planters made from recycled plastic bottles with drainage system. Perfect for herbs and small plants.',
-      price: 299,
-      category: 'decor',
-      condition: 'new',
-      materials: 'Recycled plastic bottles, rope, paint',
-      location: 'Mumbai, Maharashtra',
-      seller: 'EcoCreator23',
-      rating: 4.8,
-      reviews: 24,
-      images: ['🪴'],
-      featured: true,
-      createdAt: '2024-01-15',
-    },
-    {
-      id: '2',
-      title: 'Cardboard Storage Organizer',
-      description: 'Multi-compartment storage solution made from cardboard boxes. Lightweight and customizable.',
-      price: 450,
-      category: 'furniture',
-      condition: 'excellent',
-      materials: 'Cardboard, fabric, glue',
-      location: 'Delhi, Delhi',
-      seller: 'GreenMaker',
-      rating: 4.6,
-      reviews: 18,
-      images: ['📦'],
-      featured: false,
-      createdAt: '2024-01-12',
-    },
-    {
-      id: '3',
-      title: 'Newspaper Woven Basket',
-      description: 'Handwoven basket made from old newspapers. Great for storage and eco-friendly.',
-      price: 199,
-      category: 'decor',
-      condition: 'new',
-      materials: 'Newspaper, varnish',
-      location: 'Bangalore, Karnataka',
-      seller: 'CraftLover',
-      rating: 4.9,
-      reviews: 31,
-      images: ['🧺'],
-      featured: true,
-      createdAt: '2024-01-10',
-    },
-    {
-      id: '4',
-      title: 'Tire Ottoman with Storage',
-      description: 'Comfortable ottoman made from old tire with rope wrapping and internal storage compartment.',
-      price: 899,
-      category: 'furniture',
-      condition: 'excellent',
-      materials: 'Used tire, rope, foam, fabric',
-      location: 'Pune, Maharashtra',
-      seller: 'UpcycleKing',
-      rating: 4.7,
-      reviews: 15,
-      images: ['🪑'],
-      featured: false,
-      createdAt: '2024-01-08',
-    },
-    {
-      id: '5',
-      title: 'Glass Bottle Wind Chimes',
-      description: 'Melodious wind chimes crafted from recycled glass bottles in various colors.',
-      price: 349,
-      category: 'decor',
-      condition: 'new',
-      materials: 'Glass bottles, metal, string',
-      location: 'Chennai, Tamil Nadu',
-      seller: 'SoundMaker',
-      rating: 4.5,
-      reviews: 22,
-      images: ['🎐'],
-      featured: true,
-      createdAt: '2024-01-05',
-    },
-    {
-      id: '6',
-      title: 'Denim Tote Bag Collection',
-      description: 'Stylish tote bags made from old jeans with reinforced handles and pockets.',
-      price: 399,
-      category: 'bags',
-      condition: 'new',
-      materials: 'Old denim, cotton thread',
-      location: 'Kolkata, West Bengal',
-      seller: 'FashionUpcycle',
-      rating: 4.8,
-      reviews: 28,
-      images: ['👜'],
-      featured: false,
-      createdAt: '2024-01-03',
-    },
-  ]);
+  // Initialize with some sample products if none exist
+  useEffect(() => {
+    const existingProducts = dataStore.getDIYProducts();
+    if (existingProducts.length === 0 && user?.id) {
+      // Add some sample products for demonstration
+      const sampleProducts = [
+        {
+          sellerId: user.id,
+          title: 'Upcycled Plastic Bottle Planters',
+          description: 'Beautiful planters made from recycled plastic bottles with drainage system. Perfect for herbs and small plants.',
+          price: 299,
+          category: 'decor',
+          condition: 'new',
+          materials: 'Recycled plastic bottles, rope, paint',
+          location: 'Mumbai, Maharashtra',
+          images: ['🪴'],
+          status: 'active' as const
+        },
+        {
+          sellerId: user.id,
+          title: 'Cardboard Storage Organizer',
+          description: 'Multi-compartment storage solution made from cardboard boxes. Lightweight and customizable.',
+          price: 450,
+          category: 'furniture',
+          condition: 'excellent',
+          materials: 'Cardboard, fabric, glue',
+          location: 'Delhi, Delhi',
+          images: ['📦'],
+          status: 'active' as const
+        }
+      ];
+      
+      sampleProducts.forEach(product => {
+        dataStore.addDIYProduct(product);
+      });
+    }
+  }, [user?.id]);
 
   const filteredProducts = products.filter(product => {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
@@ -212,22 +190,52 @@ const DIYMarketplace = () => {
 
   const onSubmitProduct = async (data: ProductFormData) => {
     try {
-      // Simulate API call
-      const handleSellProduct = (data: any) => {
-        console.log('Product to sell:', data);
-        
-        // Calculate platform fee (5% of selling price)
-        const platformFee = data.price * 0.05;
-        const sellerEarnings = data.price - platformFee;
-        
+      if (!user?.id) {
         toast({
-          title: "Product Listed Successfully!",
-          description: `Your product has been added to the marketplace. You'll receive ₹${sellerEarnings.toFixed(2)} after our 5% platform fee.`,
+          title: 'Error',
+          description: 'You must be logged in to list products.',
+          variant: 'destructive',
         });
-        setShowAddProductDialog(false);
-      };
-      handleSellProduct(data);
+        return;
+      }
+
+      // Add product to dynamic data store
+      const newProduct = dataStore.addDIYProduct({
+        sellerId: user.id,
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        category: data.category,
+        condition: data.condition,
+        materials: data.materials,
+        location: data.location,
+        images: data.images || ['📦'], // Default image if none provided
+        status: 'active'
+      });
+
+      // Calculate platform fee (5% of selling price)
+      const platformFee = data.price * 0.05;
+      const sellerEarnings = data.price - platformFee;
+      
+      toast({
+        title: "Product Listed Successfully!",
+        description: `Your product has been added to the marketplace. You'll receive ₹${sellerEarnings.toFixed(2)} after our 5% platform fee.`,
+      });
+      
+      setShowAddProductDialog(false);
       reset();
+      
+      // Refresh products list
+      const allProducts = dataStore.getDIYProducts().map(product => ({
+        ...product,
+        seller: dataStore.getUser(product.sellerId)?.name || 'Unknown',
+        rating: 4.5,
+        reviews: Math.floor(Math.random() * 50) + 1,
+        featured: Math.random() > 0.7,
+        createdAt: product.createdAt.toISOString()
+      }));
+      setProducts(allProducts);
+      
     } catch (error) {
       toast({
         title: 'Error',
@@ -481,28 +489,28 @@ const DIYMarketplace = () => {
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
                   <CardContent className="p-6 text-center">
                     <Package className="h-8 w-8 text-primary mx-auto mb-2" />
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{userStats?.itemsListed || 0}</div>
                     <div className="text-sm text-muted-foreground">Products Listed</div>
                   </CardContent>
                 </Card>
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
                   <CardContent className="p-6 text-center">
                     <ShoppingCart className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold">0</div>
-                    <div className="text-sm text-muted-foreground">Orders Received</div>
+                    <div className="text-2xl font-bold">{userStats?.itemsSold || 0}</div>
+                    <div className="text-sm text-muted-foreground">Items Sold</div>
                   </CardContent>
                 </Card>
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
                   <CardContent className="p-6 text-center">
                     <Star className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold">-</div>
+                    <div className="text-2xl font-bold">{userStats?.rating || '-'}</div>
                     <div className="text-sm text-muted-foreground">Average Rating</div>
                   </CardContent>
                 </Card>
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-eco">
                   <CardContent className="p-6 text-center">
                     <Tag className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold">₹0</div>
+                    <div className="text-2xl font-bold">₹{userStats?.totalEarnings || 0}</div>
                     <div className="text-sm text-muted-foreground">Total Earnings</div>
                   </CardContent>
                 </Card>

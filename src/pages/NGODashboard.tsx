@@ -16,44 +16,54 @@ import {
   Plus,
   Eye
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockNGOImpact, mockImpactData } from '@/data/mockData';
+import { dataStore } from '@/lib/dynamicDataStore';
+import UserChart from '@/components/charts/UserChart';
 
 const NGODashboard = () => {
   const { user } = useAuth();
   
-  if (!user || user.role !== 'ngo') {
-    return <div>Access denied</div>;
+  if (!user || (user.role !== 'user' || user.subtype !== 'ngo-business')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You must be logged in as an NGO/Business to access this page.</p>
+        </div>
+      </div>
+    );
   }
+
+  // Get NGO stats from data store
+  const ngoStats = dataStore.getNGOStats(user?.id || '');
 
   const stats = [
     {
       title: 'Pickups Sponsored',
-      value: mockNGOImpact.pickupsSponsored,
+      value: ngoStats?.pickupsSponsored || 25,
       change: '+12 this month',
       icon: Heart,
       color: 'text-primary',
     },
     {
       title: 'Waste Recycled',
-      value: `${mockNGOImpact.wasteRecycled}kg`,
+      value: `${ngoStats?.wasteRecycled || 450}kg`,
       change: '+180kg this month',
       icon: Leaf,
       color: 'text-success',
     },
     {
       title: 'CO₂ Saved',
-      value: `${mockNGOImpact.co2Saved}kg`,
+      value: `${ngoStats?.co2Saved || 225}kg`,
       change: '+95kg this month',
       icon: Globe,
       color: 'text-blue-600',
     },
     {
-      title: 'Total Investment',
-      value: `$${mockNGOImpact.totalInvestment}`,
-      change: '$500 this month',
-      icon: Target,
-      color: 'text-purple-600',
+      title: 'People Impacted',
+      value: ngoStats?.peopleImpacted || 150,
+      change: '+45 this month',
+      icon: Users,
+      color: 'text-warning',
     },
   ];
 
@@ -81,25 +91,41 @@ const NGODashboard = () => {
     },
   ];
 
+  // Enhanced campaigns data with NGO stats integration
   const currentCampaigns = [
     {
       id: 1,
-      title: 'Clean EcoCity Initiative',
-      target: 500,
-      collected: 325,
-      budget: 2000,
-      spent: 1300,
-      status: 'active',
+      title: 'Clean Mumbai Initiative',
+      target: 1000,
+      collected: ngoStats?.wasteRecycled || 750,
+      budget: 50000,
+      spent: 35000,
+      endDate: '2024-02-15',
+      location: 'Mumbai, Maharashtra',
+      volunteers: ngoStats?.volunteersEngaged || 25
     },
     {
       id: 2,
-      title: 'E-Waste Collection Drive',
-      target: 200,
-      collected: 180,
-      budget: 1500,
-      spent: 1350,
-      status: 'active',
+      title: 'School Recycling Program',
+      target: 500,
+      collected: 320,
+      budget: 25000,
+      spent: 18000,
+      endDate: '2024-01-30',
+      location: 'Delhi, NCR',
+      volunteers: 15
     },
+    {
+      id: 3,
+      title: 'Corporate Partnership Drive',
+      target: 800,
+      collected: 480,
+      budget: 40000,
+      spent: 28000,
+      endDate: '2024-03-10',
+      location: 'Bangalore, Karnataka',
+      volunteers: 20
+    }
   ];
 
   return (
@@ -176,41 +202,23 @@ const NGODashboard = () => {
           {/* Impact Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Impact Over Time</CardTitle>
+              <CardTitle>Environmental Impact</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mockImpactData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis 
-                      dataKey="month" 
-                      className="text-muted-foreground"
-                    />
-                    <YAxis className="text-muted-foreground" />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="recycled" 
-                      stroke="hsl(var(--success))" 
-                      strokeWidth={2}
-                      name="Waste Recycled (kg)"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="co2" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      name="CO₂ Saved (kg)"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <UserChart type="impact" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sponsorship Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly Sponsorship Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <UserChart type="monthlyActivity" />
               </div>
             </CardContent>
           </Card>
@@ -260,41 +268,46 @@ const NGODashboard = () => {
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center text-sm text-muted-foreground">
+                    <div className="flex justify-between items-center text-sm text-muted-foreground mt-3">
                       <span>
                         {Math.round((campaign.collected / campaign.target) * 100)}% complete
                       </span>
                       <span>
-                        ${campaign.budget - campaign.spent} remaining
+                        Ends {new Date(campaign.endDate).toLocaleDateString()}
                       </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                      <span>📍 {campaign.location}</span>
+                      <span>👥 {campaign.volunteers} volunteers</span>
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* This Month's Highlights */}
+          {/* Impact Chart */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Award className="h-5 w-5 text-warning" />
-                <span>This Month</span>
+                <TrendingUp className="h-5 w-5 text-success" />
+                <span>Impact Trends</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="h-64">
+                <UserChart type="ngoImpact" userStats={ngoStats} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Impact Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Impact Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-primary" />
-                    <span className="text-sm">Citizens Helped</span>
-                  </div>
-                  <span className="font-medium">234</span>
-                </div>
-                
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Leaf className="h-4 w-4 text-success" />

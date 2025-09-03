@@ -38,7 +38,7 @@ const Rewards = () => {
   const navigate = useNavigate();
   const [redeemedItems, setRedeemedItems] = useState<string[]>([]);
 
-  if (!user || user.role !== 'citizen') {
+  if (!user || (user.role !== 'user' && user.role !== 'collector')) {
     return <div>Access denied</div>;
   }
 
@@ -49,7 +49,7 @@ const Rewards = () => {
     {
       id: '1',
       name: 'Coffee Shop Voucher',
-      description: '$5 off at EcoCafe - Supporting sustainable coffee',
+      description: '₹5 off at EcoCafe - Supporting sustainable coffee',
       cost: 50,
       category: 'vouchers',
       icon: Coffee,
@@ -59,7 +59,7 @@ const Rewards = () => {
     {
       id: '2',
       name: 'Grocery Store Credit',
-      description: '$10 credit at GreenMart for organic products',
+      description: '₹10 credit at GreenMart for organic products',
       cost: 100,
       category: 'vouchers',
       icon: ShoppingCart,

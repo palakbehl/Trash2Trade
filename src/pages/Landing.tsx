@@ -119,7 +119,7 @@ const Landing = () => {
 
   const handleFeatureClick = (index: number) => {
     if (index === 3) { // DIY Marketplace
-      navigate('/eco-store');
+      navigate('/diy-marketplace');
     } else {
       setSelectedFeature(index);
     }
@@ -169,11 +169,11 @@ const Landing = () => {
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-2">
               <Phone className="h-4 w-4" />
-              <span>+91 98765 43210</span>
+              <span>8758443219</span>
             </div>
             <div className="flex items-center space-x-2">
               <MapPin className="h-4 w-4" />
-              <span>123 Green Street, Eco City, Mumbai - 400001</span>
+              <span>G H Patel College of Engineering and Technology, Anand, Gujarat, 388120</span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -463,13 +463,13 @@ const Landing = () => {
                   className="hover:shadow-glow hover:-translate-y-4 transition-all duration-500 border-0 bg-white/90 backdrop-blur-sm group cursor-pointer transform hover:scale-105"
                   onClick={() => {
                     if (role.title === 'Citizens') {
-                      navigate('/role-specific/trash-generator');
+                      navigate('/trash-generator');
                     } else if (role.title === 'Collectors') {
-                      navigate('/collector/verification');
+                      navigate('/signup');
                     } else if (role.title === 'NGOs & Businesses') {
-                      navigate('/role-specific/ngo-business');
+                      navigate('/ngo-business');
                     } else if (role.title === 'DIY Marketplace') {
-                      navigate('/eco-store');
+                      navigate('/diy-marketplace');
                     }
                   }}
                 >
@@ -662,8 +662,8 @@ const Landing = () => {
               <h3 className="font-semibold text-lg mb-4">Contact</h3>
               <ul className="space-y-2">
                 <li className="text-background/80">support@trash2trade.com</li>
-                <li className="text-background/80">+1 (555) 123-4567</li>
-                <li className="text-background/80">123 Eco Street, Green City</li>
+                <li className="text-background/80">8758443219</li>
+                <li className="text-background/80">G H Patel College of Engineering and Technology, Anand, Gujarat, 388120</li>
               </ul>
             </div>
           </div>
@@ -721,6 +721,7 @@ const Landing = () => {
       {/* ChatBot and Inquiry Components */}
       <ChatBot />
       <InquiryButton />
+      
     </div>
   );
 };

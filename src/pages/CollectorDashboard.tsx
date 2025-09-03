@@ -1,44 +1,85 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Truck, 
-  DollarSign, 
+  Package, 
+  TrendingUp, 
   MapPin, 
-  Clock,
-  Star,
-  TrendingUp,
-  CheckCircle,
+  Clock, 
+  CheckCircle, 
   AlertCircle,
+  DollarSign,
+  Truck,
+  Users,
+  Calendar,
+  Target,
+  Star,
   Route,
   Award
 } from 'lucide-react';
-import { mockPickups, mockCollectorStats } from '@/data/mockData';
+import UserChart from '@/components/charts/UserChart';
+import { dataStore } from '@/lib/dynamicDataStore';
+import CollectorChart from '@/components/charts/CollectorChart';
 
 const CollectorDashboard = () => {
   const { user } = useAuth();
+  const [collectorStats, setCollectorStats] = useState<any>(null);
+  const [availablePickups, setAvailablePickups] = useState<any[]>([]);
+  const [completedPickups, setCompletedPickups] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        const stats = dataStore.getCollectorStats(user.id);
+        setCollectorStats(stats);
+        
+        const pendingPickups = dataStore.getPendingPickupRequests();
+        setAvailablePickups(pendingPickups);
+        
+        const myCompletedPickups = dataStore.getPickupRequestsByCollector(user.id).filter(pickup => 
+          pickup.status === 'completed'
+        );
+        setCompletedPickups(myCompletedPickups);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading collector data:', error);
+        setLoading(false);
+      }
+    }
+  }, [user?.id]);
+
   if (!user || user.role !== 'collector') {
-    return <div>Access denied</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You must be logged in as a collector to access this page.</p>
+        </div>
+      </div>
+    );
   }
 
-  // Filter available pickup requests (not assigned to anyone or assigned to this collector)
-  const availablePickups = mockPickups.filter(pickup => 
-    pickup.status === 'pending' || (pickup.collectorId === user.id && pickup.status !== 'completed')
-  );
-  
-  const myActivePickups = mockPickups.filter(pickup => 
-    pickup.collectorId === user.id && pickup.status === 'accepted'
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading collector dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   const stats = [
     {
-      title: 'Today\'s Earnings',
-      value: '$85',
-      change: '+$12 vs yesterday',
+      title: 'Total Earnings',
+      value: `₹${collectorStats?.totalEarnings || 0}`,
+      change: `${collectorStats?.totalPickups || 0} pickups completed`,
       icon: DollarSign,
       color: 'text-success',
       bgColor: 'bg-success/10',
@@ -46,26 +87,26 @@ const CollectorDashboard = () => {
     },
     {
       title: 'Active Pickups',
-      value: myActivePickups.length,
-      change: '2 in progress',
+      value: `${availablePickups.length}`,
+      change: `${collectorStats?.activePickups || 0} in progress`,
       icon: Truck,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
       trend: '+2',
     },
     {
-      title: 'Rating',
-      value: mockCollectorStats.rating,
-      change: 'Based on 45 reviews',
+      title: 'Waste Collected',
+      value: `${collectorStats?.wasteCollected || 0}kg`,
+      change: 'Total collected',
       icon: Star,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
       trend: '+0.2',
     },
     {
-      title: 'Completion Rate',
-      value: `${mockCollectorStats.completionRate}%`,
-      change: 'This month',
+      title: 'Efficiency',
+      value: `${collectorStats?.efficiency || 0}kg/pickup`,
+      change: 'Average per pickup',
       icon: Award,
       color: 'text-secondary',
       bgColor: 'bg-secondary/10',
@@ -87,6 +128,13 @@ const CollectorDashboard = () => {
       icon: Route,
       to: '/collector/active',
       color: 'bg-success text-success-foreground',
+    },
+    {
+      title: 'Inventory',
+      description: 'Manage your waste stock',
+      icon: Package,
+      to: '/collector/inventory',
+      color: 'bg-purple-600 text-white',
     },
     {
       title: 'View Earnings',
@@ -208,15 +256,15 @@ const CollectorDashboard = () => {
                         <MapPin className="h-3 w-3 mr-1" />
                         {pickup.address.split(',')[0]}
                         <Clock className="h-3 w-3 ml-3 mr-1" />
-                        {new Date(pickup.preferredTime).toLocaleDateString()}
+                        {new Date(pickup.scheduledDate).toLocaleDateString()}
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-success">
-                        Est. ${pickup.quantity * 2}
+                        Est. ₹{pickup.estimatedValue || pickup.quantity * 2}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        +{pickup.quantity * 5} GC
+                        +{pickup.greenCoins || pickup.quantity * 5} GC
                       </p>
                     </div>
                   </div>
@@ -238,37 +286,52 @@ const CollectorDashboard = () => {
 
         {/* Right Column */}
         <div className="space-y-6">
-          {/* Performance Stats */}
+          {/* Earnings Chart */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Award className="h-5 w-5 text-warning" />
-                <span>Performance</span>
+                <TrendingUp className="h-5 w-5 text-success" />
+                <span>Monthly Earnings</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <UserChart type="collectorPerformance" userStats={collectorStats} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Performance Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Target className="h-5 w-5 text-primary" />
+                <span>Performance Summary</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Total Pickups</span>
-                  <span className="font-medium">{mockCollectorStats.totalPickups}</span>
+                  <span className="font-medium">{collectorStats.totalPickups}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Total Earnings</span>
                   <span className="font-medium text-success">
-                    ${mockCollectorStats.totalEarnings}
+                    ₹{collectorStats?.totalEarnings || 0}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">GreenCoins Earned</span>
+                  <span className="text-sm">Inventory Value</span>
                   <span className="font-medium text-primary">
-                    {mockCollectorStats.greenCoinsEarned} GC
+                    ₹{collectorStats?.inventoryValue || 0}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Average Rating</span>
+                  <span className="text-sm">Efficiency</span>
                   <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 text-warning fill-current" />
-                    <span className="font-medium">{mockCollectorStats.rating}</span>
+                    <TrendingUp className="h-4 w-4 text-success" />
+                    <span className="font-medium">{collectorStats?.efficiency || 0} kg/pickup</span>
                   </div>
                 </div>
               </div>
@@ -310,9 +373,9 @@ const CollectorDashboard = () => {
               <CardTitle>My Active Pickups</CardTitle>
             </CardHeader>
             <CardContent>
-              {myActivePickups.length > 0 ? (
+              {availablePickups.length > 0 ? (
                 <div className="space-y-3">
-                  {myActivePickups.map((pickup) => (
+                  {availablePickups.slice(0, 3).map((pickup) => (
                     <div key={pickup.id} className="p-3 border rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium capitalize">{pickup.wasteType}</span>
@@ -325,7 +388,7 @@ const CollectorDashboard = () => {
                         </div>
                         <div className="flex items-center mt-1">
                           <Clock className="h-3 w-3 mr-1" />
-                          Scheduled: {new Date(pickup.scheduledDate || pickup.preferredTime).toLocaleString()}
+                          Scheduled: {new Date(pickup.scheduledDate || pickup.scheduledDate).toLocaleString()}
                         </div>
                       </div>
                       <Button size="sm" className="w-full mt-3" asChild>
